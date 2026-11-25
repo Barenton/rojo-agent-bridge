@@ -27,6 +27,7 @@ local defaultSettings = {
 	logLevel = "Info",
 	timingLogsEnabled = false,
 	priorEndpoints = {},
+	agentBridgeEnabled = true,
 }
 
 local Settings = {}

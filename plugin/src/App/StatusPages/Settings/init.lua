@@ -95,6 +95,14 @@ function SettingsPage:render()
 			contentSize = self.contentSize,
 			transparency = self.props.transparency,
 		}, {
+			AgentBridge = e(Setting, {
+				id = "agentBridgeEnabled",
+				name = "Agent Bridge",
+				description = "Let automation agents operate Rojo through the RojoAgentBridge in CoreGui",
+				transparency = self.props.transparency,
+				layoutOrder = layoutIncrement(),
+			}),
+
 			AutoReconnect = e(Setting, {
 				id = "autoReconnect",
 				name = "Auto Reconnect",

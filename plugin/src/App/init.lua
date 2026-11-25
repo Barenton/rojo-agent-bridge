@@ -11,6 +11,7 @@ local Roact = require(Packages.Roact)
 local Log = require(Packages.Log)
 local Promise = require(Packages.Promise)
 
+local AgentBridge = require(Plugin.AgentBridge)
 local Assets = require(Plugin.Assets)
 local Version = require(Plugin.Version)
 local Config = require(Plugin.Config)
@@ -171,9 +172,24 @@ function App:init()
 			self:clearRunningConnectionInfo()
 		end
 	end)
+
+	-- Play-mode data models have no session for an agent to drive.
+	if RunService:IsEdit() then
+		self.agentBridge = AgentBridge.new(self)
+	end
+end
+
+function App:didUpdate()
+	if self.agentBridge then
+		self.agentBridge:syncAttributes()
+	end
 end
 
 function App:willUnmount()
+	if self.agentBridge then
+		self.agentBridge:destroy()
+		self.agentBridge = nil
+	end
 	self:endSession()
 
 	self.waypointConnection:Disconnect()
@@ -199,11 +215,17 @@ function App:addNotification(notif: {
 	onClose: (any) -> ()?,
 })
 	if not Settings:get("showNotifications") then
+		if self.agentBridge then
+			self.agentBridge:recordNotification(notif, nil)
+		end
 		return
 	end
 
 	self.notifId += 1
 	local id = self.notifId
+	if self.agentBridge then
+		self.agentBridge:recordNotification(notif, id)
+	end
 
 	self:setState(function(prevState)
 		local notifications = table.clone(prevState.notifications)
@@ -638,12 +660,18 @@ function App:startSession()
 	end)
 
 	self.cleanupPrecommit = serveSession:hookPrecommit(function(patch, instanceMap)
+		if self.agentBridge then
+			self.agentBridge:beforePatch(patch, instanceMap)
+		end
 		-- Build new tree for patch
 		self:setState({
 			patchTree = PatchTree.build(patch, instanceMap, { "Property", "Old", "New" }),
 		})
 	end)
 	self.cleanupPostcommit = serveSession:hookPostcommit(function(patch, instanceMap, unappliedPatch)
+		if self.agentBridge then
+			self.agentBridge:afterPatch(patch, instanceMap, unappliedPatch)
+		end
 		local now = DateTime.now().UnixTimestamp
 		self:setState(function(prevState)
 			local oldPatchData = prevState.patchData
@@ -821,7 +849,14 @@ function App:startSession()
 			timeout = 7,
 		})
 
-		return self.confirmationEvent:Wait()
+		if self.agentBridge then
+			self.agentBridge:setPendingPatch(patch, instanceMap, serverInfo)
+		end
+		local choice = self.confirmationEvent:Wait()
+		if self.agentBridge then
+			self.agentBridge:clearPendingPatch()
+		end
+		return choice
 	end)
 
 	serveSession:start()
