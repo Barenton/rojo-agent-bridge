@@ -7,8 +7,10 @@ local Roact = require(Packages.Roact)
 local Theme = require(Plugin.App.Theme)
 local Assets = require(Plugin.Assets)
 local Config = require(Plugin.Config)
+local Settings = require(Plugin.Settings)
 local Version = require(Plugin.Version)
 
+local Tag = require(Plugin.App.Components.Tag)
 local Tooltip = require(Plugin.App.Components.Tooltip)
 local SlicedImage = require(script.Parent.SlicedImage)
 
@@ -94,6 +96,15 @@ local function Header(props)
 			VersionIndicator = e(VersionIndicator, {
 				transparency = props.transparency,
 				layoutOrder = 2,
+			}),
+
+			AgentBridgeTag = e(Tag, {
+				text = "AGENT BRIDGE",
+				color = Settings:getBinding("agentBridgeEnabled"):map(function(enabled)
+					return if enabled then theme.BrandColor else theme.SubTextColor
+				end),
+				transparency = props.transparency,
+				layoutOrder = 3,
 			}),
 
 			Layout = e("UIListLayout", {
